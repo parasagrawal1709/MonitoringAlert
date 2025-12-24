@@ -1,0 +1,2 @@
+INCIDENTS = []
+AGENT_RUNNING = False
