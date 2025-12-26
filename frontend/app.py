@@ -12,7 +12,7 @@ with tabs[0]:
 
     env = st.selectbox("Environment", ["Linux"])
     monitors = st.multiselect(
-        "Monitors", ["CPU", "Memory", "Disk", "Process", "Port/Service"]
+        "Monitors", ["CPU", "Memory", "Disk", "Process", "Port/Service", "All Monitoring Logs"]
     )
     keywords = st.text_input("Keywords", "process: java.exe")
 
@@ -21,7 +21,7 @@ with tabs[0]:
 
     remediation = st.selectbox(
         "Remediation Rule",
-        ["Restart Service", "Kill & Restart Process", "Notify Only"]
+        ["Restart Service", "Kill & Restart Process", "Notify Only", "Vulnerability Mitigation via Agentic Flow"]
     )
 
     with st.expander("SMTP Settings"):
