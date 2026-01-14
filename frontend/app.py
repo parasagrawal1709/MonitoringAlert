@@ -70,7 +70,7 @@ import json
 st.set_page_config(layout="wide")
 st.title("🧠 Agent Automation Demo")
 
-tabs = st.tabs(["Agent Console", "Live Feed &amp; Evidence"])
+tabs = st.tabs(["Agent Console", "Live Feed &amp; Evidence","📜 Service Logs"])
 
 # ---------------- Agent Console ----------------
 with tabs[0]:
@@ -432,3 +432,32 @@ with tabs[1]:
         st.code("deployment.version: 1.0.0", language="text")
     # ===================== END ADD-ON =====================
 
+# ---------------- Service Logs ----------------
+with tabs[2]:
+    st.header("📜 Microservices Logs (Live)")
+
+    st.caption(
+        "Logs are fetched directly from running microservices via exposed ports "
+        "(Spring Boot Actuator logfile endpoint)."
+    )
+
+    from api_client import fetch_logs
+
+    col1, col2 = st.columns([3, 1])
+
+    with col2:
+        auto_refresh = st.checkbox("Auto Refresh (5s)", value=False)
+        refresh_btn = st.button("🔄 Refresh Now")
+
+    if auto_refresh:
+        st.experimental_rerun()
+
+    logs = fetch_logs()
+
+    for service, log_data in logs.items():
+        with st.expander(f"📦 {service}", expanded=False):
+            st.text_area(
+                label="Logs",
+                value=log_data,
+                height=350
+            )
