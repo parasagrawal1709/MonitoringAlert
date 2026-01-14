@@ -1,15 +1,32 @@
 import requests
 
-BASE_URL = "http://localhost:8000"
+SERVICES = {
+    "User Service": "http://localhost:9081/actuator/logfile",
+    "Order Service": "http://localhost:9082/actuator/logfile",
+    "Product Service": "http://localhost:9083/actuator/logfile",
+    "Notification Service": "http://localhost:9084/actuator/logfile",
+}
 
-def start_agent(payload):
-    return requests.post(f"{BASE_URL}/agent/start", json=payload)
+def fetch_logs():
+    logs = {}
 
-def stop_agent():
-    return requests.post(f"{BASE_URL}/agent/stop")
+    for service, url in SERVICES.items():
+        try:
+            response = requests.get(url, timeout=3)
 
-def simulate_incident():
-    return requests.post(f"{BASE_URL}/agent/simulate")
+            if response.status_code == 200:
+                logs[service] = response.text
+            else:
+                logs[service] = (
+                    f"Failed to fetch logs "
+                    f"(HTTP {response.status_code})"
+                )
 
-def fetch_incidents():
-    return requests.get(f"{BASE_URL}/incidents").json()
+        except requests.exceptions.ConnectionError:
+            logs[service] = "Service not reachable"
+        except requests.exceptions.Timeout:
+            logs[service] = "Request timed out"
+        except Exception as e:
+            logs[service] = f"Error: {str(e)}"
+
+    return logs
