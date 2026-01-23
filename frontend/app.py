@@ -450,7 +450,8 @@ with tabs[2]:
         refresh_btn = st.button("🔄 Refresh Now")
 
     if auto_refresh:
-        st.experimental_rerun()
+        # st.experimental_rerun()
+        st.rerun()
 
     logs = fetch_logs()
 
