@@ -17,3 +17,6 @@ Thumbs.db
 
 # IDE
 .vscode/
+backend/.env
+backend/gmail_token.json
+backend/google_client_secret.json
