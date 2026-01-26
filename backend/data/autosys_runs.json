@@ -1,0 +1,10 @@
+[
+  {
+    "job_id": "51e194f7-121d-41f6-a663-9aa92bc9f77b",
+    "job_name": "demo_batch_job",
+    "status": "SUCCESS",
+    "message": "Simulated run",
+    "id": "411d0480-e864-48bd-b0e2-b5ed797e7f25",
+    "time": "2026-01-13T19:27:58.034692Z"
+  }
+]
