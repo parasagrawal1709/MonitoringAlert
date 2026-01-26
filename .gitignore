@@ -3,6 +3,36 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.save
+
+# Virtual environment
+venv/
+.env
+*.env
+
+# Logs
+*.log
+
+# Databases
+*.db
+*.sqlite
+
+# Certificates
+certs/
+*.crt
+*.pem
+
+# Editor / OS files
+*.swp
+.DS_Store
+
+# Docker
+*.tar
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Virtual environment
 venv/
