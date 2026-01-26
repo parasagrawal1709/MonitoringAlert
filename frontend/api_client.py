@@ -12,4 +12,7 @@ def simulate_incident():
     return requests.post(f"{BASE_URL}/agent/simulate")
 
 def fetch_incidents():
-    return requests.get(f"{BASE_URL}/incidents").json()
+    try:
+        return requests.get(f"{BASE_URL}/incidents", timeout=2).json()
+    except requests.exceptions.RequestException:
+        return []

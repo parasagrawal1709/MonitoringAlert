@@ -1,65 +1,3 @@
-# import streamlit as st
-# from api_client import start_agent, stop_agent, simulate_incident, fetch_incidents
-#
-# st.set_page_config(layout="wide")
-# st.title("🧠 Agent Automation Demo")
-#
-# tabs = st.tabs(["Agent Console", "Live Feed & Evidence"])
-#
-# # ---------------- Agent Console ----------------
-# with tabs[0]:
-#     st.header("Agent Console")
-#
-#     env = st.selectbox("Environment", ["Linux"])
-#     monitors = st.multiselect(
-#         "Monitors", ["CPU", "Memory", "Disk", "Process", "Port/Service", "All Monitoring Logs"]
-#     )
-#     keywords = st.text_input("Keywords", "process: java.exe")
-#
-#     cpu_threshold = st.number_input("CPU Threshold (%)", value=95)
-#     duration = st.number_input("Duration (seconds)", value=300)
-#
-#     remediation = st.selectbox(
-#         "Remediation Rule",
-#         ["Restart Service", "Kill & Restart Process", "Notify Only", "Vulnerability Mitigation via Agentic Flow"]
-#     )
-#
-#     with st.expander("SMTP Settings"):
-#         st.text_input("SMTP Host")
-#         st.text_input("Port")
-#         st.checkbox("TLS/SSL")
-#         st.text_input("Sender")
-#         st.text_input("Recipients")
-#
-#     col1, col2, col3 = st.columns(3)
-#     with col1:
-#         if st.button("▶ Start Agent"):
-#             start_agent({"env": env})
-#             st.success("Agent started")
-#
-#     with col2:
-#         if st.button("⚠ Simulate Incident"):
-#             simulate_incident()
-#             st.warning("Incident simulated")
-#
-#     with col3:
-#         if st.button("⏹ Stop Agent"):
-#             stop_agent()
-#             st.info("Agent stopped")
-#
-# # ---------------- Live Feed ----------------
-# with tabs[1]:
-#     st.header("Live Feed & Evidence")
-#
-#     incidents = fetch_incidents()
-#
-#     for inc in reversed(incidents):
-#         st.markdown("### 🚨 Incident")
-#         st.json(inc)
-
-
-
-
 import streamlit as st
 from api_client import start_agent, stop_agent, simulate_incident, fetch_incidents
 # --------- ADDITIONAL IMPORTS (safe, no backend dependency) ----------
@@ -222,7 +160,7 @@ def main_app():
         st.divider()
         st.subheader("🧷 Additional Integrations (UI-only)")
 
-        integ_tabs = st.tabs(["🔁 AutoSys", "🚀 Deployments", "📦 Preset / Summary"])
+        integ_tabs = st.tabs(["🔁 AutoSys", "🚀 Deployments", "📦 Preset / Summary","🗑️ Deletions"])
 
         # -------- AutoSys Section --------
         with integ_tabs[0]:
@@ -374,6 +312,54 @@ def main_app():
                 uploaded = st.file_uploader("⬆️ Upload Preset JSON", type=["json"])
                 if uploaded:
                     st.info("Preset uploaded (UI-only). You can parse & apply values later if needed.")
+        
+        # -------- Deletions Section --------
+        with integ_tabs[3]:
+            st.markdown("### 🗑️ Deletion & Retention Settings (UI-only)")
+
+            d1, d2 = st.columns(2)
+
+            with d1:
+                disk_threshold = st.slider(
+                    "Disk Threshold (%)",
+                    min_value=0,
+                    max_value=100,
+                    value=80,
+                    help="Trigger deletion when disk usage crosses this threshold"
+                )
+
+                retention_days = st.selectbox(
+                    "Retention Period",
+                    ["1 day", "2 days", "3 days", "4 days", "5 days"],
+                    index=2
+                )
+
+                webhook_url = st.text_input(
+                    "Webhook URL (optional)",
+                    placeholder="https://hooks.example.com/..."
+                )
+
+            with d2:
+                alert_email = st.text_input(
+                    "Alert Email ID",
+                    placeholder="alerts@example.com"
+                )
+
+                llm_model = st.selectbox(
+                    "LLM Model",
+                    ["OpenAI", "Gemini"],
+                    index=0
+                )
+
+                confluence_url = st.text_input(
+                    "Confluence Page URL",
+                    placeholder="https://confluence.company.com/..."
+                )
+
+            st.caption(
+                "ℹ️ These settings are UI-only. Wire them into your backend deletion / cleanup agent when ready."
+            )
+
         # ===================== END ADD-ON =====================
 
 
@@ -381,7 +367,11 @@ def main_app():
     with tabs[1]:
         st.header("Live Feed &amp; Evidence")
 
-        incidents = fetch_incidents()
+        try:
+            incidents = fetch_incidents()
+        except Exception as e:
+            st.warning("⚠ Backend not running. Showing empty incident list.")
+            incidents = []
 
         for inc in reversed(incidents):
             st.markdown("### 🚨 Incident")
