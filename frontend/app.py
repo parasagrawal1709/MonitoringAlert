@@ -6,7 +6,7 @@ import json
 
 st.set_page_config(
     page_title="Agent Automation",
-    layout="centered",   # 👈 important for login
+    layout="centered",  # 👈 important for login
 )
 
 st.markdown("""
@@ -15,12 +15,12 @@ html, body {
     margin: 0;
     height: 100%;
 }
-                        
+
 .main .block-container {
     padding: 0 !important;
     max-width: 100% !important;
 }
-            
+
 /* Center the login container */
 .login-wrapper {
     display: flex;
@@ -102,8 +102,6 @@ def login_page():
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 
-
-
 # st.set_page_config(layout="wide")
 def main_app():
     st.title("🧠 Agent Automation Demo")
@@ -130,7 +128,8 @@ def main_app():
 
         remediation = st.selectbox(
             "Remediation Rule",
-            ["Restart Service", "Kill &amp; Restart Process", "Notify Only", "Vulnerability Mitigation via Agentic Flow"]
+            ["Restart Service", "Kill &amp; Restart Process", "Notify Only",
+             "Vulnerability Mitigation via Agentic Flow"]
         )
 
         with st.expander("SMTP Settings"):
@@ -160,7 +159,7 @@ def main_app():
         st.divider()
         st.subheader("🧷 Additional Integrations (UI-only)")
 
-        integ_tabs = st.tabs(["🔁 AutoSys", "🚀 Deployments", "📦 Preset / Summary","🗑️ Deletions"])
+        integ_tabs = st.tabs(["🔁 AutoSys", "🚀 Deployments", "📦 Preset / Summary", "🗑️ Deletions"])
 
         # -------- AutoSys Section --------
         with integ_tabs[0]:
@@ -185,7 +184,8 @@ def main_app():
                 autosys_collect_alarm = st.checkbox("Collect Alarm Details", value=True)
 
             with st.expander("Advanced AutoSys Settings"):
-                autosys_cli_cmd = st.text_input("AutoSys CLI Command Template (optional)", value="autorep -J {job} -r -q")
+                autosys_cli_cmd = st.text_input("AutoSys CLI Command Template (optional)",
+                                                value="autorep -J {job} -r -q")
                 autosys_alarm_cmd = st.text_input("Alarm Query Template (optional)", value="autostatus -J {job}")
                 autosys_tags = st.text_input("Tags (comma-separated)", value="batch,autosys")
 
@@ -212,7 +212,8 @@ def main_app():
                 version = st.text_input("Version / Build / Image Tag", value="")
                 rollback_strategy = st.selectbox(
                     "Rollback Strategy",
-                    ["None", "Auto Rollback on Failure", "Manual Rollback Only", "Blue/Green Switchback", "Canary Rollback"],
+                    ["None", "Auto Rollback on Failure", "Manual Rollback Only", "Blue/Green Switchback",
+                     "Canary Rollback"],
                     index=1
                 )
                 change_ticket = st.text_input("Change Ticket / CRQ (optional)", value="")
@@ -312,10 +313,115 @@ def main_app():
                 uploaded = st.file_uploader("⬆️ Upload Preset JSON", type=["json"])
                 if uploaded:
                     st.info("Preset uploaded (UI-only). You can parse & apply values later if needed.")
-        
+
+        # # -------- Deletions Section --------
+        # with integ_tabs[3]:
+        #     st.markdown("### 🗑️ Deletion & Retention Settings")
+        #
+        #     d1, d2 = st.columns(2)
+        #
+        #     with d1:
+        #         disk_threshold = st.slider(
+        #             "Disk Threshold (%)",
+        #             min_value=0,
+        #             max_value=100,
+        #             value=80,
+        #             help="Trigger deletion when disk usage crosses this threshold"
+        #         )
+        #
+        #         retention_days = st.selectbox(
+        #             "Retention Period",
+        #             ["1 day", "2 days", "3 days", "4 days", "5 days"],
+        #             index=2
+        #         )
+        #
+        #         webhook_url = st.text_input(
+        #             "Webhook URL (optional)",
+        #             placeholder="https://hooks.example.com/..."
+        #         )
+        #
+        #     with d2:
+        #         alert_email = st.text_input(
+        #             "Alert Email ID",
+        #             placeholder="alerts@example.com"
+        #         )
+        #
+        #         llm_model = st.selectbox(
+        #             "LLM Model",
+        #             ["gpt-4.1-mini", "gpt-4", "gpt-3.5-turbo"],
+        #             index=0
+        #         )
+        #
+        #         llm_api_key = st.text_input(
+        #             "LLM API Key",
+        #             type="password",
+        #             placeholder="sk-..."
+        #         )
+        #
+        #     # NEW: Save Configuration Button
+        #     col1, col2, col3 = st.columns(3)
+        #
+        #     with col1:
+        #         if st.button("💾 Save Config", key="save_cleanup_config"):
+        #             config = {
+        #                 "DISK_THRESHOLD": disk_threshold,
+        #                 "RETENTION_DAYS": int(retention_days.split()[0]),
+        #                 "SLACK_WEBHOOK_URL": webhook_url,
+        #                 "ALERT_EMAIL": alert_email,
+        #                 "LLM_MODEL": llm_model,
+        #                 "LLM_API_KEY": llm_api_key,
+        #                 "AI_ENABLED": "true" if llm_api_key else "false"
+        #             }
+        #
+        #             # Write to file that backend can read
+        #             with open("/tmp/cleanup_config.env", "w") as f:
+        #                 for key, val in config.items():
+        #                     f.write(f'{key}="{val}"\n')
+        #
+        #             st.success("✅ Configuration saved to /tmp/cleanup_config.env")
+        #
+        #     with col2:
+        #         if st.button("▶️ Run Cleanup Now", key="trigger_cleanup"):
+        #             import subprocess
+        #             try:
+        #                 result = subprocess.run(
+        #                     ["bash", "/agent/db_temp_cleanup.sh"],
+        #                     capture_output=True,
+        #                     text=True,
+        #                     timeout=300
+        #                 )
+        #                 st.success("✅ Cleanup executed!")
+        #                 st.text_area("Output:", result.stdout, height=200)
+        #                 if result.stderr:
+        #                     st.error(result.stderr)
+        #             except Exception as e:
+        #                 st.error(f"❌ Error: {str(e)}")
+        #
+        #     with col3:
+        #         if st.button("📋 View Logs", key="view_cleanup_logs"):
+        #             try:
+        #                 with open("/var/tmp/db_temp_cleanup.log", "r") as f:
+        #                     logs = f.read()
+        #                 st.text_area("Recent Logs:", logs[-2000:], height=200)
+        #             except FileNotFoundError:
+        #                 st.info("No logs found yet")
+        #             except Exception as e:
+        #                 st.error(f"Error reading logs: {str(e)}")
+
         # -------- Deletions Section --------
         with integ_tabs[3]:
-            st.markdown("### 🗑️ Deletion & Retention Settings (UI-only)")
+            st.markdown("### 🗑️ Deletion & Retention Settings")
+
+            # Get script path
+            import os
+            SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+            CLEANUP_SCRIPT = os.path.join(SCRIPT_DIR, "db_temp_cleanup.sh")
+
+            # Check if script exists
+            script_exists = os.path.isfile(CLEANUP_SCRIPT)
+            if not script_exists:
+                st.error(f"⚠️ Cleanup script not found at: {CLEANUP_SCRIPT}")
+                st.info("Please ensure db_temp_cleanup.sh is in the same directory as app.py")
 
             d1, d2 = st.columns(2)
 
@@ -347,21 +453,112 @@ def main_app():
 
                 llm_model = st.selectbox(
                     "LLM Model",
-                    ["OpenAI", "Gemini"],
+                    ["gpt-4.1-mini", "gpt-4", "gpt-3.5-turbo"],
                     index=0
                 )
 
-                confluence_url = st.text_input(
-                    "Confluence Page URL",
-                    placeholder="https://confluence.company.com/..."
+                llm_api_key = st.text_input(
+                    "LLM API Key",
+                    type="password",
+                    placeholder="sk-..."
                 )
 
+            # Action buttons
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                if st.button("💾 Save Config", key="save_cleanup_config"):
+                    config = {
+                        "DISK_THRESHOLD": disk_threshold,
+                        "RETENTION_DAYS": int(retention_days.split()[0]),
+                        "SLACK_WEBHOOK_URL": webhook_url,
+                        "ALERT_EMAIL": alert_email,
+                        "LLM_MODEL": llm_model,
+                        "LLM_API_KEY": llm_api_key,
+                        "AI_ENABLED": "true" if llm_api_key else "false"
+                    }
+
+                    try:
+                        # Try /tmp first, fallback to current directory
+                        config_paths = ["/tmp/cleanup_config.env", "./cleanup_config.env"]
+                        saved = False
+
+                        for config_path in config_paths:
+                            try:
+                                with open(config_path, "w") as f:
+                                    for key, val in config.items():
+                                        f.write(f'{key}="{val}"\n')
+                                st.success(f"✅ Configuration saved to {config_path}")
+                                saved = True
+                                break
+                            except PermissionError:
+                                continue
+
+                        if not saved:
+                            st.error("❌ Could not save config file (permission denied)")
+
+                    except Exception as e:
+                        st.error(f"❌ Error saving config: {str(e)}")
+
+            with col2:
+                if st.button("▶️ Run Cleanup Now", key="trigger_cleanup", disabled=not script_exists):
+                    import subprocess
+                    try:
+                        # Make sure script is executable
+                        os.chmod(CLEANUP_SCRIPT, 0o755)
+
+                        result = subprocess.run(
+                            ["bash", CLEANUP_SCRIPT],
+                            capture_output=True,
+                            text=True,
+                            timeout=300,
+                            cwd=SCRIPT_DIR
+                        )
+
+                        st.success("✅ Cleanup executed!")
+
+                        if result.stdout:
+                            st.text_area("Output:", result.stdout, height=200)
+
+                        if result.stderr:
+                            st.warning("Stderr:")
+                            st.text_area("Errors:", result.stderr, height=100)
+
+                    except subprocess.TimeoutExpired:
+                        st.error("❌ Script execution timed out (>5 minutes)")
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+                        st.code(f"Script path: {CLEANUP_SCRIPT}")
+
+            with col3:
+                if st.button("📋 View Logs", key="view_cleanup_logs"):
+                    log_paths = [
+                        "/var/tmp/db_temp_cleanup.log",
+                        "./db_temp_cleanup.log",
+                        os.path.join(SCRIPT_DIR, "db_temp_cleanup.log")
+                    ]
+
+                    log_found = False
+                    for log_path in log_paths:
+                        try:
+                            with open(log_path, "r") as f:
+                                logs = f.read()
+                            st.text_area(f"Recent Logs ({log_path}):", logs[-2000:], height=200)
+                            log_found = True
+                            break
+                        except FileNotFoundError:
+                            continue
+                        except Exception as e:
+                            st.error(f"Error reading {log_path}: {str(e)}")
+
+                    if not log_found:
+                        st.info("📝 No logs found yet. Run cleanup first to generate logs.")
+
             st.caption(
-                "ℹ️ These settings are UI-only. Wire them into your backend deletion / cleanup agent when ready."
+                f"ℹ️ Script location: `{CLEANUP_SCRIPT}`"
             )
 
         # ===================== END ADD-ON =====================
-
 
     # ---------------- Live Feed ----------------
     with tabs[1]:
@@ -406,7 +603,8 @@ def main_app():
             with st.expander("Add AutoSys Event (Demo / UI-only)", expanded=False):
                 job = st.text_input("Job Name", value="example_job", key="as_job")
                 box = st.text_input("Box", value="", key="as_box")
-                status = st.selectbox("Status", ["FAILURE", "SUCCESS", "RUNNING", "TERMINATED", "ON_HOLD"], key="as_status")
+                status = st.selectbox("Status", ["FAILURE", "SUCCESS", "RUNNING", "TERMINATED", "ON_HOLD"],
+                                      key="as_status")
                 run_id = st.text_input("Run ID (optional)", value="", key="as_runid")
                 message = st.text_area("Message / Error", value="Job failed due to non-zero exit code", key="as_msg")
                 if st.button("➕ Add AutoSys Event", key="as_add"):
@@ -458,7 +656,9 @@ def main_app():
         with right:
             st.markdown("### 🚀 Deployment Evidence")
             with st.expander("Add Deployment Event (Demo / UI-only)", expanded=False):
-                tool = st.selectbox("Tool", ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Other"], key="dep_tool")
+                tool = st.selectbox("Tool",
+                                    ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Other"],
+                                    key="dep_tool")
                 env2 = st.selectbox("Environment", ["Dev", "QA", "UAT", "Prod"], index=1, key="dep_env")
                 service = st.text_input("Service", value="example-service", key="dep_service")
                 version2 = st.text_input("Version/Build", value="1.0.0", key="dep_ver")
@@ -481,9 +681,11 @@ def main_app():
             # Filters
             d1, d2, d3 = st.columns(3)
             with d1:
-                dep_env_filter = st.selectbox("Filter Env", ["All", "Dev", "QA", "UAT", "Prod"], index=0, key="dep_filter_env")
+                dep_env_filter = st.selectbox("Filter Env", ["All", "Dev", "QA", "UAT", "Prod"], index=0,
+                                              key="dep_filter_env")
             with d2:
-                dep_result_filter = st.multiselect("Filter Result", ["SUCCESS", "FAILED", "IN_PROGRESS"], default=["FAILED"], key="dep_filter_res")
+                dep_result_filter = st.multiselect("Filter Result", ["SUCCESS", "FAILED", "IN_PROGRESS"],
+                                                   default=["FAILED"], key="dep_filter_res")
             with d3:
                 dep_search = st.text_input("Search (service/version)", value="", key="dep_search")
 
@@ -518,7 +720,8 @@ def main_app():
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("#### AutoSys ↔ Incident Keywords")
-            st.write("If you see failures in specific batch jobs, try adding job name into **Keywords** on the console.")
+            st.write(
+                "If you see failures in specific batch jobs, try adding job name into **Keywords** on the console.")
             st.code("process: java.exe OR job: example_job", language="text")
 
         with c2:
@@ -527,8 +730,10 @@ def main_app():
             st.code("deployment.version: 1.0.0", language="text")
         # ===================== END ADD-ON =====================
 
+
 if not st.session_state.logged_in:
     login_page()
 else:
     main_app()
+
 
