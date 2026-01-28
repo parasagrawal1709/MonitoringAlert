@@ -157,31 +157,31 @@ html, body {
     height: 100%;
 }
 
-/* Login card */
-.login-card {
-    width: 380px;
-    padding: 2.5rem;
-    border-radius: 14px;
-    background: #0f1117;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-}
+# /* Login card */
+# .login-card {
+#     width: 380px;
+#     padding: 2.5rem;
+#     border-radius: 14px;
+#     background: #0f1117;
+#     box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+# }
 
-/* Title */
-.login-card h1 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
+# /* Title */
+# .login-card h1 {
+#     text-align: center;
+#     margin-bottom: 1.5rem;
+# }
 
-/* Input spacing */
-.login-card .stTextInput {
-    margin-bottom: 1rem;
-}
+# /* Input spacing */
+# .login-card .stTextInput {
+#     margin-bottom: 1rem;
+# }
 
-/* Button full width */
-.login-card button {
-    width: 100%;
-    border-radius: 8px;
-}
+# /* Button full width */
+# .login-card button {
+#     width: 100%;
+#     border-radius: 8px;
+# }
 </style>
 """, unsafe_allow_html=True)
 # ---------------- LOGIN CONFIG (UI-only demo) ----------------
@@ -193,6 +193,14 @@ USERS = {
     "viewer@example.com": {
         "password": "viewer123",
         "access": "read"
+    },
+    "viewer_ey@example.com": {
+        "password": "viewerey123",
+        "access": "write"
+    },
+    "root@example.com": {
+        "password": "root123",
+        "access": "write"
     }
 }
 
