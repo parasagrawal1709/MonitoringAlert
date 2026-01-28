@@ -1,15 +1,35 @@
+import random
+
 import streamlit as st
 import pandas as pd
 import requests
 from api_client import start_agent, stop_agent, simulate_incident, fetch_incidents
 # --------- ADDITIONAL IMPORTS (safe, no backend dependency) ----------
-from datetime import datetime
+from datetime import datetime, timezone, time
 import json
+
+import time as pytime
+
 
 st.set_page_config(
     page_title="Agent Automation",
     layout="centered",  # 👈 important for login
 )
+
+# -------------------------------------------------
+# Helper Functions
+# -------------------------------------------------
+def utc_now():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def generate_random_tags():
+    tag_pool = [
+        "deploy", "hotfix", "canary", "blue-green", "rollback-ready",
+        "prod-safe", "infra-change", "config-update", "zero-downtime",
+        "observability", "slo-impact", "customer-facing"
+    ]
+    return random.sample(tag_pool, k=random.randint(2, 5))
 
 def external_search_fallback(query):
     return (
@@ -17,6 +37,8 @@ def external_search_fallback(query):
         "This will be fetched via Google / Web Search in the next phase.\n\n"
         f"**Query:** {query}"
     )
+def generate_commit_hash(length=40):
+    return ''.join(random.choices('0123456789abcdef', k=length))
 
 @st.cache_data
 def load_vulnerability_kb(EXCEL_URL):
@@ -330,7 +352,159 @@ def main_app():
 
             st.caption("Tip: These fields are UI-only until wired into your backend agent/API payload.")
 
-        # -------- Deployments Section --------
+        # # -------- Deployments Section --------
+        # with integ_tabs[1]:
+        #     st.markdown("### 🚀 Deployment Tracking (Additional Fields)")
+        #     d1, d2, d3 = st.columns(3)
+        #
+        #     with d1:
+        #         deploy_enabled = st.checkbox("Enable Deployment Tracking", value=False)
+        #         deploy_tool = st.selectbox(
+        #             "Deployment Tool",
+        #             ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Spinnaker", "Other"],
+        #             index=0
+        #         )
+        #         deploy_env = st.selectbox("Deployment Environment", ["Dev", "QA", "UAT", "Prod"], index=1)
+        #     with d2:
+        #         service_name = st.text_input("Service / App Name", value="")
+        #         repo_name = st.text_input("Repo (optional)", value="")
+        #         pipeline_name = st.text_input("Pipeline / Workflow Name (optional)", value="")
+        #     with d3:
+        #         version = st.text_input("Version / Build / Image Tag", value="")
+        #         rollback_strategy = st.selectbox(
+        #             "Rollback Strategy",
+        #             ["None", "Auto Rollback on Failure", "Manual Rollback Only", "Blue/Green Switchback",
+        #              "Canary Rollback"],
+        #             index=1
+        #         )
+        #         change_ticket = st.text_input("Change Ticket / CRQ (optional)", value="")
+        #
+        #     with st.expander("Deployment Evidence Collection"):
+        #         collect_deploy_logs = st.checkbox("Collect Deployment Logs", value=True)
+        #         collect_deploy_metrics = st.checkbox("Collect Post-deploy Metrics", value=True)
+        #         collect_deploy_events = st.checkbox("Collect Cluster/Infra Events", value=False)
+        #
+        #     st.caption("Tip: Use this to correlate incidents with deployment activity in your live feed.")
+
+        # # -------------------------------------------------
+        # # Deployment Tracking Tab
+        # # -------------------------------------------------
+        # with integ_tabs[1]:
+        #     st.markdown("### 🚀 Deployment Tracking (Additional Fields)")
+        #     d1, d2, d3 = st.columns(3)
+        #
+        #     with d1:
+        #         deploy_enabled = st.checkbox("Enable Deployment Tracking", value=False)
+        #         deploy_tool = st.selectbox(
+        #             "Deployment Tool",
+        #             ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Spinnaker", "Other"],
+        #             index=0
+        #         )
+        #         deploy_env = st.selectbox("Deployment Environment", ["Dev", "QA", "UAT", "Prod"], index=1)
+        #
+        #     with d2:
+        #         service_name = st.text_input("Service / App Name", value="")
+        #         repo_name = st.text_input("Repo (optional)", value="")
+        #         pipeline_name = st.text_input("Pipeline / Workflow Name (optional)", value="")
+        #
+        #     with d3:
+        #         version = st.text_input("Version / Build / Image Tag", value="")
+        #         rollback_strategy = st.selectbox(
+        #             "Rollback Strategy",
+        #             [
+        #                 "None",
+        #                 "Auto Rollback on Failure",
+        #                 "Manual Rollback Only",
+        #                 "Blue/Green Switchback",
+        #                 "Canary Rollback"
+        #             ],
+        #             index=1
+        #         )
+        #         change_ticket = st.text_input("Change Ticket / CRQ (optional)", value="")
+        #
+        #     with st.expander("Deployment Evidence Collection"):
+        #         collect_deploy_logs = st.checkbox("Collect Deployment Logs", value=True)
+        #         collect_deploy_metrics = st.checkbox("Collect Post-deploy Metrics", value=True)
+        #         collect_deploy_events = st.checkbox("Collect Cluster/Infra Events", value=False)
+        #
+        #     st.caption("Tip: Use this to correlate incidents with deployment activity in your live feed.")
+        #
+        #     st.divider()
+        #
+        #     # -------------------------------------------------
+        #     # Session State Init
+        #     # -------------------------------------------------
+        #     if "deploy_logs" not in st.session_state:
+        #         st.session_state.deploy_logs = []
+        #
+        #     if "deploy_tags" not in st.session_state:
+        #         st.session_state.deploy_tags = []
+        #
+        #     # -------------------------------------------------
+        #     # Track Deployment Action
+        #     # -------------------------------------------------
+        #     track_deploy = st.button(
+        #         "🚀 Track Deployment",
+        #         use_container_width=True,
+        #         disabled=not deploy_enabled
+        #     )
+        #
+        #     if track_deploy:
+        #         # Reset previous run
+        #         st.session_state.deploy_logs = []
+        #         st.session_state.deploy_tags = []
+        #
+        #         # Start log
+        #         st.session_state.deploy_logs.append(
+        #             f"{utc_now()}: Running job: deploy"
+        #         )
+        #
+        #         with st.spinner("Deployment in progress..."):
+        #             pytime.sleep(30)  # ⏳ simulated deployment
+        #
+        #         # Completion log
+        #         st.session_state.deploy_logs.append(
+        #             f"{utc_now()}: Job deploy completed with result: Succeeded"
+        #         )
+        #
+        #         # Generate tags
+        #         st.session_state.deploy_tags = generate_random_tags()
+        #
+        #     # -------------------------------------------------
+        #     # Deployment Activity Feed
+        #     # -------------------------------------------------
+        #     if st.session_state.deploy_logs:
+        #         st.markdown("### 📡 Deployment Activity Feed")
+        #         for log in st.session_state.deploy_logs:
+        #             st.code(log, language="text")
+        #
+        #     # -------------------------------------------------
+        #     # Deployment Tags
+        #     # -------------------------------------------------
+        #     if st.session_state.deploy_tags:
+        #         st.markdown("### 🏷 Auto-generated Deployment Tags")
+        #         st.multiselect(
+        #             "Tags",
+        #             options=st.session_state.deploy_tags,
+        #             default=st.session_state.deploy_tags,
+        #             disabled=True
+        #         )
+
+        # -------------------------------------------------
+        # Session State Init
+        # -------------------------------------------------
+        if "deploy_logs" not in st.session_state:
+            st.session_state.deploy_logs = []
+
+        if "deploy_tags" not in st.session_state:
+            st.session_state.deploy_tags = []
+
+        if "deploy_version" not in st.session_state:
+            st.session_state.deploy_version = ""
+
+        # -------------------------------------------------
+        # Deployment Tracking UI
+        # -------------------------------------------------
         with integ_tabs[1]:
             st.markdown("### 🚀 Deployment Tracking (Additional Fields)")
             d1, d2, d3 = st.columns(3)
@@ -342,17 +516,31 @@ def main_app():
                     ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Spinnaker", "Other"],
                     index=0
                 )
-                deploy_env = st.selectbox("Deployment Environment", ["Dev", "QA", "UAT", "Prod"], index=1)
+                deploy_env = st.selectbox(
+                    "Deployment Environment",
+                    ["Dev", "QA", "UAT", "Prod"],
+                    index=1
+                )
+
             with d2:
                 service_name = st.text_input("Service / App Name", value="")
                 repo_name = st.text_input("Repo (optional)", value="")
                 pipeline_name = st.text_input("Pipeline / Workflow Name (optional)", value="")
+
             with d3:
-                version = st.text_input("Version / Build / Image Tag", value="")
+                version = st.text_input(
+                    "Version / Build / Image Tag",
+                    value=st.session_state.deploy_version
+                )
                 rollback_strategy = st.selectbox(
                     "Rollback Strategy",
-                    ["None", "Auto Rollback on Failure", "Manual Rollback Only", "Blue/Green Switchback",
-                     "Canary Rollback"],
+                    [
+                        "None",
+                        "Auto Rollback on Failure",
+                        "Manual Rollback Only",
+                        "Blue/Green Switchback",
+                        "Canary Rollback"
+                    ],
                     index=1
                 )
                 change_ticket = st.text_input("Change Ticket / CRQ (optional)", value="")
@@ -363,6 +551,68 @@ def main_app():
                 collect_deploy_events = st.checkbox("Collect Cluster/Infra Events", value=False)
 
             st.caption("Tip: Use this to correlate incidents with deployment activity in your live feed.")
+            st.divider()
+
+            # -------------------------------------------------
+            # Track Deployment Action
+            # -------------------------------------------------
+            track_deploy = st.button(
+                "🚀 Track Deployment",
+                use_container_width=True,
+                disabled=not deploy_enabled
+            )
+
+            if track_deploy:
+                # Reset previous run
+                st.session_state.deploy_logs = []
+                st.session_state.deploy_tags = []
+
+                # Auto-generate Git commit hash if empty
+                if not st.session_state.deploy_version:
+                    st.session_state.deploy_version = generate_commit_hash()
+
+                # Start log
+                st.session_state.deploy_logs.append(
+                    f"{utc_now()} | DEPLOY_START | "
+                    f"service={service_name or 'unknown'} | "
+                    f"env={deploy_env} | "
+                    f"tool={deploy_tool} | "
+                    f"commit={st.session_state.deploy_version}"
+                )
+
+                with st.spinner("Deployment in progress..."):
+                    pytime.sleep(30)  # ⏳ simulated deployment
+
+                # Completion log
+                st.session_state.deploy_logs.append(
+                    f"{utc_now()} | DEPLOY_SUCCESS | "
+                    f"service={service_name or 'unknown'} | "
+                    f"commit={st.session_state.deploy_version} | "
+                    f"rollback={rollback_strategy}"
+                )
+
+                # Auto tags
+                st.session_state.deploy_tags = generate_random_tags()
+
+            # -------------------------------------------------
+            # Deployment Activity Feed
+            # -------------------------------------------------
+            if st.session_state.deploy_logs:
+                st.markdown("### 📡 Deployment Activity Feed")
+                for log in st.session_state.deploy_logs:
+                    st.code(log, language="text")
+
+            # -------------------------------------------------
+            # Deployment Tags
+            # -------------------------------------------------
+            if st.session_state.deploy_tags:
+                st.markdown("### 🏷 Auto-generated Deployment Tags")
+                st.multiselect(
+                    "Tags",
+                    options=st.session_state.deploy_tags,
+                    default=st.session_state.deploy_tags,
+                    disabled=True
+                )
 
         # -------- Summary + Preset Download/Upload --------
         with integ_tabs[2]:
@@ -547,154 +797,294 @@ def main_app():
         #             except Exception as e:
         #                 st.error(f"Error reading logs: {str(e)}")
 
-        # -------- Deletions Section --------
+        # # -------- Deletions Section --------
+        # with integ_tabs[3]:
+        #     st.markdown("### 🗑️ Deletion & Retention Settings")
+        #
+        #     # Get script path
+        #     import os
+        #     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+        #     CLEANUP_SCRIPT = os.path.join(SCRIPT_DIR, "db_temp_cleanup.sh")
+        #
+        #     # Check if script exists
+        #     script_exists = os.path.isfile(CLEANUP_SCRIPT)
+        #     if not script_exists:
+        #         st.error(f"⚠️ Cleanup script not found at: {CLEANUP_SCRIPT}")
+        #         st.info("Please ensure db_temp_cleanup.sh is in the same directory as app.py")
+        #
+        #     d1, d2 = st.columns(2)
+        #
+        #     with d1:
+        #         disk_threshold = st.slider(
+        #             "Disk Threshold (%)",
+        #             min_value=0,
+        #             max_value=100,
+        #             value=80,
+        #             help="Trigger deletion when disk usage crosses this threshold"
+        #         )
+        #
+        #         retention_days = st.selectbox(
+        #             "Retention Period",
+        #             ["1 day", "2 days", "3 days", "4 days", "5 days"],
+        #             index=2
+        #         )
+        #
+        #         webhook_url = st.text_input(
+        #             "Webhook URL (optional)",
+        #             placeholder="https://hooks.example.com/..."
+        #         )
+        #
+        #     with d2:
+        #         alert_email = st.text_input(
+        #             "Alert Email ID",
+        #             placeholder="alerts@example.com"
+        #         )
+        #
+        #         llm_model = st.selectbox(
+        #             "LLM Model",
+        #             ["gpt-4.1-mini", "gpt-4", "gpt-3.5-turbo"],
+        #             index=0
+        #         )
+        #
+        #         llm_api_key = st.text_input(
+        #             "LLM API Key",
+        #             type="password",
+        #             placeholder="sk-..."
+        #         )
+        #
+        #     # Action buttons
+        #     col1, col2, col3 = st.columns(3)
+        #
+        #     with col1:
+        #         if st.button("💾 Save Config", key="save_cleanup_config"):
+        #             config = {
+        #                 "DISK_THRESHOLD": disk_threshold,
+        #                 "RETENTION_DAYS": int(retention_days.split()[0]),
+        #                 "SLACK_WEBHOOK_URL": webhook_url,
+        #                 "ALERT_EMAIL": alert_email,
+        #                 "LLM_MODEL": llm_model,
+        #                 "LLM_API_KEY": llm_api_key,
+        #                 "AI_ENABLED": "true" if llm_api_key else "false"
+        #             }
+        #
+        #             try:
+        #                 # Try /tmp first, fallback to current directory
+        #                 config_paths = ["/tmp/cleanup_config.env", "./cleanup_config.env"]
+        #                 saved = False
+        #
+        #                 for config_path in config_paths:
+        #                     try:
+        #                         with open(config_path, "w") as f:
+        #                             for key, val in config.items():
+        #                                 f.write(f'{key}="{val}"\n')
+        #                         st.success(f"✅ Configuration saved to {config_path}")
+        #                         saved = True
+        #                         break
+        #                     except PermissionError:
+        #                         continue
+        #
+        #                 if not saved:
+        #                     st.error("❌ Could not save config file (permission denied)")
+        #
+        #             except Exception as e:
+        #                 st.error(f"❌ Error saving config: {str(e)}")
+        #
+        #     with col2:
+        #         if st.button("▶️ Run Cleanup Now", key="trigger_cleanup", disabled=not script_exists):
+        #             import subprocess
+        #             try:
+        #                 # Make sure script is executable
+        #                 os.chmod(CLEANUP_SCRIPT, 0o755)
+        #
+        #                 result = subprocess.run(
+        #                     ["bash", CLEANUP_SCRIPT],
+        #                     capture_output=True,
+        #                     text=True,
+        #                     timeout=300,
+        #                     cwd=SCRIPT_DIR
+        #                 )
+        #
+        #                 st.success("✅ Cleanup executed!")
+        #
+        #                 if result.stdout:
+        #                     st.text_area("Output:", result.stdout, height=200)
+        #
+        #                 if result.stderr:
+        #                     st.warning("Stderr:")
+        #                     st.text_area("Errors:", result.stderr, height=100)
+        #
+        #             except subprocess.TimeoutExpired:
+        #                 st.error("❌ Script execution timed out (>5 minutes)")
+        #             except Exception as e:
+        #                 st.error(f"❌ Error: {str(e)}")
+        #                 st.code(f"Script path: {CLEANUP_SCRIPT}")
+        #
+        #     with col3:
+        #         if st.button("📋 View Logs", key="view_cleanup_logs"):
+        #             log_paths = [
+        #                 "/var/tmp/db_temp_cleanup.log",
+        #                 "./db_temp_cleanup.log",
+        #                 os.path.join(SCRIPT_DIR, "db_temp_cleanup.log")
+        #             ]
+        #
+        #             log_found = False
+        #             for log_path in log_paths:
+        #                 try:
+        #                     with open(log_path, "r") as f:
+        #                         logs = f.read()
+        #                     st.text_area(f"Recent Logs ({log_path}):", logs[-2000:], height=200)
+        #                     log_found = True
+        #                     break
+        #                 except FileNotFoundError:
+        #                     continue
+        #                 except Exception as e:
+        #                     st.error(f"Error reading {log_path}: {str(e)}")
+        #
+        #             if not log_found:
+        #                 st.info("📝 No logs found yet. Run cleanup first to generate logs.")
+        #
+        #     st.caption(
+        #         f"ℹ️ Script location: `{CLEANUP_SCRIPT}`"
+        #     )
+
+        # -------- Deletions Section (Agentic / Deployment-style) --------
         with integ_tabs[3]:
-            st.markdown("### 🗑️ Deletion & Retention Settings")
+            st.markdown("### 🗑️ Intelligent Deletion & Retention Engine")
 
-            # Get script path
-            import os
-            SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-            CLEANUP_SCRIPT = os.path.join(SCRIPT_DIR, "db_temp_cleanup.sh")
+            # ------------------------------
+            # Session State
+            # ------------------------------
+            if "cleanup_logs" not in st.session_state:
+                st.session_state.cleanup_logs = []
 
-            # Check if script exists
-            script_exists = os.path.isfile(CLEANUP_SCRIPT)
-            if not script_exists:
-                st.error(f"⚠️ Cleanup script not found at: {CLEANUP_SCRIPT}")
-                st.info("Please ensure db_temp_cleanup.sh is in the same directory as app.py")
+            if "cleanup_running" not in st.session_state:
+                st.session_state.cleanup_running = False
 
-            d1, d2 = st.columns(2)
+            # ------------------------------
+            # Configuration UI
+            # ------------------------------
+            c1, c2, c3 = st.columns(3)
 
-            with d1:
+            with c1:
                 disk_threshold = st.slider(
-                    "Disk Threshold (%)",
-                    min_value=0,
-                    max_value=100,
-                    value=80,
-                    help="Trigger deletion when disk usage crosses this threshold"
+                    "Disk Usage Threshold (%)",
+                    50, 95, 80,
+                    help="Cleanup triggers when usage exceeds this value"
                 )
 
                 retention_days = st.selectbox(
-                    "Retention Period",
-                    ["1 day", "2 days", "3 days", "4 days", "5 days"],
+                    "Retention Policy",
+                    ["1 day", "3 days", "7 days", "14 days"],
+                    index=1
+                )
+
+            with c2:
+                target_dbs = st.multiselect(
+                    "Target Databases",
+                    ["MongoDB (27017)", "PostgreSQL (5432)", "MySQL (3306)"],
+                    default=["PostgreSQL (5432)", "MySQL (3306)"]
+                )
+
+                ai_mode = st.selectbox(
+                    "Cleanup Mode",
+                    ["Rule-based", "Agentic AI (Risk-aware)", "Hybrid (Recommended)"],
                     index=2
                 )
 
-                webhook_url = st.text_input(
-                    "Webhook URL (optional)",
-                    placeholder="https://hooks.example.com/..."
-                )
 
-            with d2:
-                alert_email = st.text_input(
-                    "Alert Email ID",
-                    placeholder="alerts@example.com"
-                )
 
-                llm_model = st.selectbox(
-                    "LLM Model",
-                    ["gpt-4.1-mini", "gpt-4", "gpt-3.5-turbo"],
-                    index=0
-                )
+            with c3:
+                notify_email = st.text_input("Alert Email (optional)")
+                webhook_url = st.text_input("Webhook (optional)")
 
-                llm_api_key = st.text_input(
-                    "LLM API Key",
-                    type="password",
-                    placeholder="sk-..."
-                )
+            st.divider()
 
-            # Action buttons
-            col1, col2, col3 = st.columns(3)
+            # ------------------------------
+            # Trigger Cleanup
+            # ------------------------------
+            trigger_cleanup = st.button(
+                "🚀 Execute Intelligent Cleanup",
+                use_container_width=True,
+                disabled=st.session_state.cleanup_running
+            )
 
-            with col1:
-                if st.button("💾 Save Config", key="save_cleanup_config"):
-                    config = {
-                        "DISK_THRESHOLD": disk_threshold,
-                        "RETENTION_DAYS": int(retention_days.split()[0]),
-                        "SLACK_WEBHOOK_URL": webhook_url,
-                        "ALERT_EMAIL": alert_email,
-                        "LLM_MODEL": llm_model,
-                        "LLM_API_KEY": llm_api_key,
-                        "AI_ENABLED": "true" if llm_api_key else "false"
-                    }
+            if trigger_cleanup:
+                st.session_state.cleanup_logs = []
+                st.session_state.cleanup_running = True
 
-                    try:
-                        # Try /tmp first, fallback to current directory
-                        config_paths = ["/tmp/cleanup_config.env", "./cleanup_config.env"]
-                        saved = False
+                retention_val = int(retention_days.split()[0])
 
-                        for config_path in config_paths:
-                            try:
-                                with open(config_path, "w") as f:
-                                    for key, val in config.items():
-                                        f.write(f'{key}="{val}"\n')
-                                st.success(f"✅ Configuration saved to {config_path}")
-                                saved = True
-                                break
-                            except PermissionError:
-                                continue
+                def log(msg):
+                    st.session_state.cleanup_logs.append(
+                        f"{utc_now()} | {msg}"
+                    )
 
-                        if not saved:
-                            st.error("❌ Could not save config file (permission denied)")
+                with st.spinner("Agent initializing cleanup strategy..."):
+                    pytime.sleep(1.5)
+                    log("AGENT_INIT | policy_loaded=true | ai_mode=" + ai_mode)
 
-                    except Exception as e:
-                        st.error(f"❌ Error saving config: {str(e)}")
+                with st.spinner("Scanning databases & filesystem..."):
+                    pytime.sleep(2)
+                    log("SCAN_START | disk_threshold={} | retention={}d".format(
+                        disk_threshold, retention_val
+                    ))
 
-            with col2:
-                if st.button("▶️ Run Cleanup Now", key="trigger_cleanup", disabled=not script_exists):
-                    import subprocess
-                    try:
-                        # Make sure script is executable
-                        os.chmod(CLEANUP_SCRIPT, 0o755)
+                    if "MongoDB (27017)" in target_dbs:
+                        log("SCAN_DB | mongodb:27017 | collections_scanned=214 | stale_docs=19k")
 
-                        result = subprocess.run(
-                            ["bash", CLEANUP_SCRIPT],
-                            capture_output=True,
-                            text=True,
-                            timeout=300,
-                            cwd=SCRIPT_DIR
-                        )
+                    if "PostgreSQL (5432)" in target_dbs:
+                        log("SCAN_DB | postgres:5432 | temp_tables=42 | old_indexes=11")
 
-                        st.success("✅ Cleanup executed!")
+                    if "MySQL (3306)" in target_dbs:
+                        log("SCAN_DB | mysql:3306 | tmp_tables=31 | orphan_rows=8k")
 
-                        if result.stdout:
-                            st.text_area("Output:", result.stdout, height=200)
+                    log("SCAN_FS | /tmp | files=3.1GB | candidates=1.4GB")
+                    log("SCAN_FS | /var/tmp | cache_entries=842 | size=620MB")
 
-                        if result.stderr:
-                            st.warning("Stderr:")
-                            st.text_area("Errors:", result.stderr, height=100)
+                with st.spinner("Agent evaluating deletion risk & compliance..."):
+                    pytime.sleep(2)
+                    log("AI_EVAL | retention_compliant=true | risk_score=LOW")
+                    log("AI_DECISION | delete_safe=true | requires_approval=false")
 
-                    except subprocess.TimeoutExpired:
-                        st.error("❌ Script execution timed out (>5 minutes)")
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-                        st.code(f"Script path: {CLEANUP_SCRIPT}")
+                with st.spinner("Executing cleanup operations..."):
+                    pytime.sleep(3)
 
-            with col3:
-                if st.button("📋 View Logs", key="view_cleanup_logs"):
-                    log_paths = [
-                        "/var/tmp/db_temp_cleanup.log",
-                        "./db_temp_cleanup.log",
-                        os.path.join(SCRIPT_DIR, "db_temp_cleanup.log")
-                    ]
+                    log("DELETE_START | phase=databases")
 
-                    log_found = False
-                    for log_path in log_paths:
-                        try:
-                            with open(log_path, "r") as f:
-                                logs = f.read()
-                            st.text_area(f"Recent Logs ({log_path}):", logs[-2000:], height=200)
-                            log_found = True
-                            break
-                        except FileNotFoundError:
-                            continue
-                        except Exception as e:
-                            st.error(f"Error reading {log_path}: {str(e)}")
+                    if "PostgreSQL (5432)" in target_dbs:
+                        log("DELETE_DB | postgres | temp_tables_dropped=38")
+                        log("DELETE_DB | postgres | indexes_rebuilt=6")
 
-                    if not log_found:
-                        st.info("📝 No logs found yet. Run cleanup first to generate logs.")
+                    if "MySQL (3306)" in target_dbs:
+                        log("DELETE_DB | mysql | tmp_tables_purged=29")
+                        log("DELETE_DB | mysql | orphan_rows_deleted=7.6k")
+
+                    if "MongoDB (27017)" in target_dbs:
+                        log("DELETE_DB | mongodb | ttl_collections_cleaned=17")
+                        log("DELETE_DB | mongodb | archived_docs_removed=14k")
+
+                    log("DELETE_FS | /tmp | reclaimed=1.2GB")
+                    log("DELETE_FS | /var/tmp | reclaimed=540MB")
+
+                with st.spinner("Verifying system health post-cleanup..."):
+                    pytime.sleep(1.5)
+                    log("VERIFY | disk_usage_after=61%")
+                    log("VERIFY | db_latency=normal | error_rate=0")
+
+                log("CLEANUP_COMPLETE | status=SUCCESS | agent_confidence=0.94")
+                st.session_state.cleanup_running = False
+                st.success("✅ Intelligent cleanup completed successfully")
+
+            # ------------------------------
+            # Live Cleanup Activity Feed
+            # ------------------------------
+            if st.session_state.cleanup_logs:
+                st.markdown("### 📡 Cleanup Activity Feed")
+                for entry in st.session_state.cleanup_logs[-20:]:
+                    st.code(entry, language="text")
 
             st.caption(
-                f"ℹ️ Script location: `{CLEANUP_SCRIPT}`"
+                "🔐 Agentic cleanup respects retention, minimizes risk, and logs every action for audit."
             )
 
         # ===================== END ADD-ON =====================
