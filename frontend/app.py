@@ -184,6 +184,36 @@ html, body {
 # }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* Chat container spacing */
+section[data-testid="stChatMessage"] {
+    padding: 0.6rem 1rem;
+}
+
+/* User bubble */
+div[data-testid="stChatMessage"][aria-label="Chat message from user"] {
+    background: linear-gradient(135deg, #4f7cff, #6c8cff);
+    color: white;
+    border-radius: 14px;
+    margin-left: 20%;
+}
+
+/* Assistant bubble */
+div[data-testid="stChatMessage"][aria-label="Chat message from assistant"] {
+    background: #1e1e26;
+    color: #eaeaf0;
+    border-radius: 14px;
+    margin-right: 20%;
+}
+
+/* Input bar */
+textarea {
+    border-radius: 12px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ---------------- LOGIN CONFIG (UI-only demo) ----------------
 USERS = {
     "admin@example.com": {
@@ -1268,70 +1298,164 @@ def main_app():
             st.code("deployment.version: 1.0.0", language="text")
         # ===================== END ADD-ON =====================
 
+    # with tabs[2]:
+    #     st.header("💬 Ops Chatbot")
+    #     user_query = st.text_input(
+    #         "Ask me anything about ops:",
+    #         placeholder="e.g. Which certificates are expired?"
+    #     )
+    #     # Initialize chat history once
+    #     if "chat_history" not in st.session_state:
+    #         st.session_state.chat_history = []
+    #     # if user_query:
+    #     #     answer = chatbot_answer_engine(
+    #     #         user_query,
+    #     #         st.session_state.ui_state,
+    #     #         vuln_df
+    #     #     )
+
+    #     #     if answer != "NOT_FOUND":
+    #     #         st.write(answer)
+    #     #     else:
+    #     #         # 🌐 GOOGLE / EXTERNAL FALLBACK GOES HERE
+    #     #         external_answer = external_search_fallback(user_query)
+    #     #         st.info(external_answer)
+    #     if st.button("Ask") and user_query.strip():
+    #         # Store user message
+    #         st.session_state.chat_history.append(
+    #             {"role": "user", "content": user_query}
+    #         )
+
+    #         # # Get answer
+    #         # answer = chatbot_answer_engine(
+    #         #     user_query,
+    #         #     st.session_state.ui_state,
+    #         #     st.session_state.vuln_df
+    #         # )
+
+    #         # if answer == "NOT_FOUND":
+    #         #     answer = external_search_fallback(user_query)
+
+    #         # # Store bot response
+    #         # st.session_state.chat_history.append(
+    #         #     {"role": "assistant", "content": answer}
+    #         # )
+    #         raw_answer = chatbot_answer_engine(
+    #             user_query,
+    #             st.session_state.ui_state,
+    #             st.session_state.vuln_df
+    #         )
+
+    #         if raw_answer == "NOT_FOUND":
+    #             raw_answer = external_search_fallback(user_query)
+
+    #         formatted_answer = format_bot_response(raw_answer)
+
+    #         st.session_state.chat_history.append(
+    #             {"role": "assistant", "content": formatted_answer}
+    #         )
+
+
+    #     # -------- Render Chat --------
+    #     for msg in st.session_state.chat_history:
+    #         if msg["role"] == "user":
+    #             st.markdown(f"**🧑 You:** {msg['content']}")
+    #         else:
+    #             st.markdown(f"**🤖 Bot:** {msg['content']}")
+
     with tabs[2]:
         st.header("💬 Ops Chatbot")
-        user_query = st.text_input(
-            "Ask me anything about ops:",
-            placeholder="e.g. Which certificates are expired?"
-        )
-        # Initialize chat history once
-        if "chat_history" not in st.session_state:
-            st.session_state.chat_history = []
-        # if user_query:
-        #     answer = chatbot_answer_engine(
-        #         user_query,
-        #         st.session_state.ui_state,
-        #         vuln_df
-        #     )
 
-        #     if answer != "NOT_FOUND":
-        #         st.write(answer)
-        #     else:
-        #         # 🌐 GOOGLE / EXTERNAL FALLBACK GOES HERE
-        #         external_answer = external_search_fallback(user_query)
-        #         st.info(external_answer)
-        if st.button("Ask") and user_query.strip():
-            # Store user message
-            st.session_state.chat_history.append(
-                {"role": "user", "content": user_query}
-            )
+        # # Show suggestions only when chat is empty
+        # if "messages" not in st.session_state or not st.session_state.messages:
+        #     with st.expander("💡 Try asking"):
+        #         st.markdown("""
+        #         - Which certificates are expired?
+        #         - Any disk issues today?
+        #         - What was the last deployment?
+        #         - Show vulnerabilities related to log
+        #         """)
 
-            # # Get answer
-            # answer = chatbot_answer_engine(
-            #     user_query,
-            #     st.session_state.ui_state,
-            #     st.session_state.vuln_df
-            # )
+        # Show suggestions only when chat is empty
+        if "messages" not in st.session_state or not st.session_state.messages:
+            st.markdown("### 💡 Try asking")
 
-            # if answer == "NOT_FOUND":
-            #     answer = external_search_fallback(user_query)
+            suggestions = [
+                "Which certificates are expired?",
+                "Any disk issues today?",
+                "What was the last deployment?",
+                "Show vulnerabilities related to log"
+            ]
 
-            # # Store bot response
-            # st.session_state.chat_history.append(
-            #     {"role": "assistant", "content": answer}
-            # )
-            raw_answer = chatbot_answer_engine(
-                user_query,
-                st.session_state.ui_state,
-                st.session_state.vuln_df
-            )
+            for q in suggestions:
+                if st.button(q, use_container_width=True):
+                    # Act exactly like user typed this question
+                    st.session_state.messages.append({
+                        "role": "user",
+                        "content": q
+                    })
 
-            if raw_answer == "NOT_FOUND":
-                raw_answer = external_search_fallback(user_query)
+                    raw_answer = chatbot_answer_engine(
+                        q,
+                        st.session_state.ui_state,
+                        st.session_state.vuln_df
+                    )
 
-            formatted_answer = format_bot_response(raw_answer)
+                    if raw_answer == "NOT_FOUND":
+                        raw_answer = external_search_fallback(q)
 
-            st.session_state.chat_history.append(
-                {"role": "assistant", "content": formatted_answer}
-            )
+                    formatted_answer = format_bot_response(raw_answer)
+
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": formatted_answer
+                    })
+
+                    st.rerun()
 
 
-        # -------- Render Chat --------
-        for msg in st.session_state.chat_history:
-            if msg["role"] == "user":
-                st.markdown(f"**🧑 You:** {msg['content']}")
-            else:
-                st.markdown(f"**🤖 Bot:** {msg['content']}")
+
+        # 1️⃣ Initialize messages once
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # 2️⃣ Render chat history (bubble UI)
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        # 3️⃣ Bottom-docked chat input (THIS is the key change)
+        user_query = st.chat_input("Ask me anything about ops…")
+
+        if user_query:
+            # --- User message ---
+            st.session_state.messages.append({
+                "role": "user",
+                "content": user_query
+            })
+
+            # --- Bot thinking indicator ---
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking…"):
+                    raw_answer = chatbot_answer_engine(
+                        user_query,
+                        st.session_state.ui_state,
+                        st.session_state.vuln_df
+                    )
+
+                    if raw_answer == "NOT_FOUND":
+                        raw_answer = external_search_fallback(user_query)
+
+                    formatted_answer = format_bot_response(raw_answer)
+
+            # --- Store bot response ---
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": formatted_answer
+            })
+
+            # Refresh to show new messages
+            st.rerun()
 
 if not st.session_state.logged_in:
     login_page()
