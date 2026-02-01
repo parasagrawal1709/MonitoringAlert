@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 backend/agent_run.log
 frontend/.venv/
+backend/agent_run.log
+frontend/.venv/
