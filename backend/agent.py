@@ -4,7 +4,222 @@ load_dotenv()
 
 import os
 import requests
+from typing import Any, Dict, List, Optional
+import json
 
+# =========================
+# ✅ Minimal SSL bypass hook
+# =========================
+VERIFY_SSL = os.getenv("VERIFY_SSL", "true").strip().lower() in ("1", "true", "yes", "y")
+
+# If SSL verification is disabled, make sure all requests in this process follow it,
+# including requests made inside imported modules (kb_loader, gemini_client, etc.)
+if not VERIFY_SSL:
+    try:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:
+        pass
+
+    _orig_request = requests.sessions.Session.request
+
+    def _patched_request(self, method, url, **kwargs):
+        # Only set verify if caller didn't explicitly set it
+        kwargs.setdefault("verify", False)
+        return _orig_request(self, method, url, **kwargs)
+
+    requests.sessions.Session.request = _patched_request
+
+
+# ==========================================================
+# ✅ Power Automate Webhook Integration (HTTP Trigger)
+# ==========================================================
+# IMPORTANT:
+# - Use the FULL signed URL from Power Automate trigger (includes &sp=...&sv=...&sig=...)
+# - If you use the "api-version=1" URL WITHOUT sig, you'll get DirectApiAuthorizationRequired
+#
+# Put your FULL signed URL in .env:
+# POWER_AUTOMATE_HTTP_URL="https://.../invoke?api-version=1&sp=...&sv=...&sig=..."
+POWER_AUTOMATE_HTTP_URL_DEFAULT = (
+    "https://a3c669f6ac2e4e77ad43beab3e15be.e7.environment.api.powerplatform.com/"
+    "powerautomate/automations/direct/workflows/ce1ab52fb7ac48b19090b6d798dd787c/"
+    "triggers/manual/paths/invoke?api-version=1"
+)
+
+POWER_AUTOMATE_HTTP_URL = os.getenv("POWER_AUTOMATE_HTTP_URL", POWER_AUTOMATE_HTTP_URL_DEFAULT).strip()
+POWER_AUTOMATE_ENABLED = os.getenv("POWER_AUTOMATE_ENABLED", "true").strip().lower() in ("1", "true", "yes", "y")
+
+
+def _as_text(x: Any) -> str:
+    if x is None:
+        return ""
+    return str(x)
+
+
+def _attempts_to_human_lines(attempts: List[Any]) -> List[str]:
+    """
+    Converts attempts list (dict/str/any) into a clean list of human-readable lines.
+    """
+    if not attempts:
+        return []
+
+    lines: List[str] = []
+    for a in attempts:
+        if isinstance(a, dict):
+            action = _as_text(a.get("action") or a.get("name") or "action")
+            ok = a.get("ok", None)
+            details = _as_text(a.get("details") or a.get("message") or "")
+            status = "succeeded" if ok is True else ("failed" if ok is False else "completed")
+            if details:
+                lines.append(f"{action}: {status} — {details}")
+            else:
+                lines.append(f"{action}: {status}")
+        else:
+            lines.append(_as_text(a))
+
+    # de-duplicate while preserving order
+    seen = set()
+    out: List[str] = []
+    for l in lines:
+        if l not in seen:
+            seen.add(l)
+            out.append(l)
+    return out
+
+
+def _join_steps(next_steps: List[str]) -> str:
+    """
+    PowerShell test used next_steps as a string.
+    We'll join list into a single string.
+    """
+    if not next_steps:
+        return ""
+    cleaned = [str(s).strip() for s in next_steps if str(s).strip()]
+    return " | ".join(cleaned)
+
+
+def _build_power_automate_payload_flat(
+    host: str,
+    incident: Dict[str, Any],
+    attempts: List[Any],
+    status: str,
+    next_steps: List[str],
+    email_to: str,
+) -> Dict[str, Any]:
+    """
+    ✅ Build payload to match the working PowerShell test (flat JSON fields).
+    """
+    incident_type = incident.get("type", "Unknown Incident")
+    severity = str(incident.get("severity", "INFO")).upper()
+    status_up = str(status).upper()
+
+    # summary as STRING (PowerShell test uses a string)
+    incident_details = _as_text(incident.get("details"))
+    remediation_lines = _attempts_to_human_lines(attempts)
+    remediation_text = "; ".join(remediation_lines) if remediation_lines else "No automated remediation performed."
+
+    summary = incident_details if incident_details else remediation_text
+
+    next_steps_str = _join_steps(next_steps)
+
+    teams_message = (
+        f"SRE Agent: {incident_type} detected on {host}. "
+        f"Severity={severity}, Status={status_up}. "
+        f"Next: {next_steps_str or 'No action required.'}"
+    )
+
+    return {
+        "host": host,
+        "incident_type": incident_type,
+        "severity": severity,
+        "status": status_up,
+        "summary": summary,
+        "next_steps": next_steps_str,
+        "email_to": email_to,
+        "teams_message": teams_message,
+    }
+
+
+def notify_power_automate(
+    subject: str,  # kept to avoid breaking your call signature
+    host: str,
+    incident: Dict[str, Any],
+    attempts: List[Any],
+    status: str,
+    next_steps: List[str],
+) -> None:
+    """
+    Calls Power Automate HTTP trigger using POST.
+    Non-blocking: failure here must NOT break Gmail email behavior.
+
+    ✅ Fixes:
+    - Send FLAT payload (like working PowerShell)
+    - Send RAW JSON string (closest to ConvertTo-Json)
+    - Logs response
+    - Does not leak sig in logs
+    """
+    if not POWER_AUTOMATE_ENABLED:
+        print("[PowerAutomate] Skipped (POWER_AUTOMATE_ENABLED=false)", flush=True)
+        return
+
+    if not POWER_AUTOMATE_HTTP_URL:
+        print("[PowerAutomate] Skipped (POWER_AUTOMATE_HTTP_URL empty)", flush=True)
+        return
+
+    # Try to reuse cfg.to_email via env if available; else keep empty
+    # (Flow can have a fixed "To" as well)
+    email_to = os.getenv("POWER_AUTOMATE_EMAIL_TO", "").strip()
+
+    payload = _build_power_automate_payload_flat(
+        host=host,
+        incident=incident,
+        attempts=attempts,
+        status=status,
+        next_steps=next_steps,
+        email_to=email_to,
+    )
+
+    bearer = os.getenv("POWER_AUTOMATE_BEARER_TOKEN", "").strip()
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    if bearer:
+        headers["Authorization"] = f"Bearer {bearer}"
+
+    safe_url = POWER_AUTOMATE_HTTP_URL
+    if "sig=" in safe_url:
+        safe_url = safe_url.split("sig=")[0] + "sig=***"
+    print(f"[PowerAutomate] POST -> {safe_url}", flush=True)
+
+    try:
+        # Send as raw JSON string (closest to PowerShell ConvertTo-Json)
+        body = json.dumps(payload, ensure_ascii=False)
+
+        r = requests.post(
+            POWER_AUTOMATE_HTTP_URL,
+            data=body,
+            headers=headers,
+            timeout=20,
+        )
+
+        print(f"[PowerAutomate] HTTP {r.status_code}", flush=True)
+        if r.text:
+            print(f"[PowerAutomate] Response: {r.text[:800]}", flush=True)
+
+        if 200 <= r.status_code < 300:
+            print("[PowerAutomate] ✅ Trigger accepted by Flow", flush=True)
+        else:
+            print("[PowerAutomate] ❌ Flow trigger failed", flush=True)
+            print("[PowerAutomate] Tip: Ensure POWER_AUTOMATE_HTTP_URL is the FULL signed URL (includes &sig=...)", flush=True)
+
+    except Exception as e:
+        print(f"[PowerAutomate] Error: {e}", flush=True)
+
+
+# ==========================================================
+# Original imports / logic (unchanged)
+# ==========================================================
 from vulnerability_map import VULNERABILITY_MAP
 from config import AgentConfig
 from monitors.windows_monitors import (
@@ -32,6 +247,7 @@ def check_backend_health(base_url: str) -> dict:
     Returns: {"ok": bool, "status_code": int|None, "details": str}
     """
     try:
+        # verify is globally patched via requests Session when VERIFY_SSL=false
         r = requests.get(f"{base_url}/health", timeout=3)
         if r.status_code == 200:
             return {"ok": True, "status_code": 200, "details": r.text}
@@ -64,10 +280,10 @@ def decide_and_act(cfg: AgentConfig):
       incident, attempts, status, next_steps, evidence
     """
     incident = None
-    attempts = []
-    next_steps = []
+    attempts: List[Any] = []
+    next_steps: List[str] = []
     status = "blocked"
-    evidence = {}
+    evidence: Dict[str, Any] = {}
 
     # -------------------------
     # Scenario 1: Backend URL Unhealthy -> attempt self-heal
@@ -188,14 +404,12 @@ def main():
     # -------------------------
     # ✅ KB Config (from ENV)
     # -------------------------
-    # Example:
-    # KB_URL=https://raw.githubusercontent.com/<user>/<repo>/main/CWE_Knowledge_Base.xlsx
     kb_url = os.getenv("KB_URL", "").strip()
     kb_refresh = os.getenv("KB_REFRESH", "false").strip().lower() in ("1", "true", "yes")
     kb_cache_dir = os.getenv("KB_CACHE_DIR", ".kb_cache").strip() or ".kb_cache"
     kb_filename = os.getenv("KB_FILENAME", "CWE_Knowledge_Base.xlsx").strip() or "CWE_Knowledge_Base.xlsx"
 
-    kb_mapping = {}
+    kb_mapping: Dict[str, Any] = {}
     kb_status = {"enabled": False, "ok": False, "error": None, "source": None}
 
     if kb_url:
@@ -217,6 +431,9 @@ def main():
     print(f"CPU Threshold     : {cfg.cpu_threshold_pct}% for {cfg.cpu_duration_seconds}s", flush=True)
     print(f"Disk Threshold    : {cfg.disk_threshold_pct}% (C:)", flush=True)
     print("--------------------------------------------", flush=True)
+    print(f"VERIFY_SSL        : {VERIFY_SSL}", flush=True)
+    print(f"PowerAutomate     : enabled={POWER_AUTOMATE_ENABLED}", flush=True)
+    print(f"PowerAutomate URL : {'(set)' if bool(POWER_AUTOMATE_HTTP_URL) else '(empty)'}", flush=True)
 
     if kb_status["enabled"]:
         print("\n[KB Status]", flush=True)
@@ -256,7 +473,7 @@ def main():
         print("- None (policy / safety block or not required)", flush=True)
 
     print("\n[Final Status]", flush=True)
-    print(status.upper(), flush=True)
+    print(str(status).upper(), flush=True)
 
     print("\n[Next Steps / Guidance]", flush=True)
     for step in next_steps:
@@ -267,8 +484,8 @@ def main():
     # ---------------------------------------------------------
     print("\n[LLM Diagnosis + Email Drafting]", flush=True)
 
-    subject = None
-    body_html = None
+    subject: Optional[str] = None
+    body_html: Optional[str] = None
 
     try:
         draft = diagnose_and_draft(
@@ -277,7 +494,7 @@ def main():
             attempts=attempts,
             status=status,
             next_steps=next_steps,
-            vulnerability=vuln,  # ✅ now coming from KB (or fallback)
+            vulnerability=vuln,
             style="concise",
         )
 
@@ -306,10 +523,33 @@ def main():
             vuln=vuln,
         )
 
-    print("\n[Notification]", flush=True)
-    print("Sending email...", flush=True)
-    send_email(cfg.to_email, subject, body_html, html=True)
-    print("Email sent successfully.", flush=True)
+    # ---------------------------------------------------------
+    # ✅ Send Gmail email (original behavior)  ✅ FIX: never let Gmail failure kill workflow
+    # ---------------------------------------------------------
+    print("\n[Notification - Email]", flush=True)
+    try:
+        print("Sending email...", flush=True)
+        send_email(cfg.to_email, subject or "", body_html or "", html=True)
+        print("Email sent successfully.", flush=True)
+    except Exception as e:
+        # Don't stop execution; workflow should still run
+        print(f"[Email] FAILED to send Gmail email: {e}", flush=True)
+
+    # ---------------------------------------------------------
+    # ✅ Power Automate trigger (Outlook mail + Teams message via Flow)
+    # ---------------------------------------------------------
+    print("\n[Notification - Power Automate]", flush=True)
+    try:
+        notify_power_automate(
+            subject=subject or "",
+            host=cfg.host_label,
+            incident=incident,
+            attempts=attempts,
+            status=status,
+            next_steps=next_steps,
+        )
+    except Exception as e:
+        print(f"[PowerAutomate] Unexpected failure (ignored): {e}", flush=True)
 
     print("\n========== Execution Completed ==========\n", flush=True)
 

@@ -55,13 +55,139 @@ def _table_row(label: str, value: str) -> str:
     """
 
 
-def _render_attempts(attempts: List[Any]) -> str:
+# -------------------------
+# Human-friendly renderers
+# -------------------------
+
+def _incident_story(incident: Dict[str, Any], status: str) -> Dict[str, str]:
+    """
+    Converts raw incident type/details into demo-friendly, human-readable text.
+    Returns:
+      {
+        "what_happened": "...",
+        "what_agent_did": "...",
+        "outcome": "..."
+      }
+    """
+    itype = (incident.get("type") or "Unknown").strip()
+    raw_details = (incident.get("details") or "").strip()
+    status_u = (status or "").upper()
+
+    # Defaults (safe generic)
+    what_happened = "The monitoring agent detected an issue based on configured checks."
+    what_agent_did = "The agent evaluated safe remediation options (policy-safe actions only)."
+    outcome = "The incident was reported for visibility."
+
+    # More specific stories
+    if itype.lower() in ("backend url unhealthy", "backend service unavailable", "health degraded"):
+        what_happened = (
+            "The backend service did not respond as expected to health checks, "
+            "indicating a temporary availability issue."
+        )
+        if status_u == "RESOLVED":
+            what_agent_did = "The agent triggered an automated recovery action to restore service availability."
+            outcome = "The backend recovered successfully and returned to a healthy state."
+        elif status_u == "BLOCKED":
+            what_agent_did = "The agent attempted recovery, but the service still appears unavailable."
+            outcome = "Manual investigation may be required to restore normal operation."
+        else:
+            what_agent_did = "The agent recorded the service degradation and raised an alert."
+            outcome = "The service state will continue to be monitored."
+
+    elif itype.lower() == "cpu spike":
+        what_happened = "CPU usage exceeded the configured threshold, indicating a potential spike or workload surge."
+        what_agent_did = "The agent collected evidence and raised an alert (no destructive actions were taken in demo mode)."
+        outcome = "Please review the top CPU-consuming processes and recent changes/deployments."
+
+    elif itype.lower() in ("disk usage high", "disk space high"):
+        what_happened = "Disk usage crossed the configured threshold, indicating low free space."
+        if status_u == "RESOLVED":
+            what_agent_did = "The agent performed a safe cleanup action to reclaim space."
+            outcome = "Disk usage dropped below the threshold and the system returned to normal."
+        elif status_u == "BLOCKED":
+            what_agent_did = "The agent attempted cleanup, but disk usage is still above the threshold."
+            outcome = "Further cleanup or capacity expansion may be required."
+        else:
+            what_agent_did = "The agent raised an alert and captured disk usage evidence."
+            outcome = "Please review large directories and apply retention/log rotation policies."
+
+    elif itype.lower() == "no incident":
+        what_happened = "No monitored thresholds were breached during this run."
+        what_agent_did = "No action was required."
+        outcome = "System appears stable based on current monitoring signals."
+
+    # If raw_details contains something non-technical you still want, append lightly (optional)
+    # But avoid dumping URLs/JSON/logs.
+    # We only append if it's short and not obviously technical.
+    if raw_details and len(raw_details) <= 120 and all(x not in raw_details.lower() for x in ("http", "https", "{", "}", "status_code", "/health", "/simulate")):
+        what_happened = f"{what_happened} ({raw_details})"
+
+    return {
+        "what_happened": what_happened,
+        "what_agent_did": what_agent_did,
+        "outcome": outcome,
+    }
+
+
+def _humanize_attempt(a: Any) -> str:
+    """
+    Turns remediation attempt objects (strings/dicts) into human sentences.
+    """
+    if a is None:
+        return ""
+
+    # If attempt is already a plain string
+    if isinstance(a, str):
+        s = a.strip()
+        # Avoid showing raw endpoints if present
+        if "/simulate/" in s or "/health" in s or "status=" in s or "HTTP" in s:
+            return "A remediation action was executed (technical details suppressed for readability)."
+        return s
+
+    if isinstance(a, dict):
+        action = str(a.get("action", "remediation")).replace("_", " ").strip().lower()
+        ok = a.get("ok", None)
+
+        # Action-specific phrasing
+        if "backend" in action and "heal" in action:
+            if ok is True:
+                return "Auto-recovery was triggered and the backend service was brought back online."
+            if ok is False:
+                return "Auto-recovery was attempted, but the backend service could not be restored automatically."
+            return "Auto-recovery was evaluated for the backend service."
+
+        if "disk" in action and "clean" in action:
+            if ok is True:
+                return "Disk cleanup was executed successfully."
+            if ok is False:
+                return "Disk cleanup was attempted but did not complete successfully."
+            return "Disk cleanup was evaluated."
+
+        # Generic
+        if ok is True:
+            return f"Remediation action executed successfully ({action})."
+        if ok is False:
+            return f"Remediation action attempted but did not succeed ({action})."
+        return f"Remediation action recorded ({action})."
+
+    # Fallback
+    return "A remediation action was recorded."
+
+
+def _render_attempts(attempts: List[Any], status: str) -> str:
     if not attempts:
-        return "<p style='margin:0;color:#6b7280;'>None</p>"
+        # If resolved with no attempts, still keep it readable
+        if (status or "").upper() == "RESOLVED":
+            return "<p style='margin:0;color:#374151;'>No remediation was required.</p>"
+        return "<p style='margin:0;color:#6b7280;'>No remediation actions were executed.</p>"
 
     items = []
     for a in attempts:
-        items.append(f"<li style='margin:6px 0;'>{_escape_html(a)}</li>")
+        msg = _humanize_attempt(a)
+        if msg:
+            items.append(f"<li style='margin:6px 0;'>{_escape_html(msg)}</li>")
+    if not items:
+        return "<p style='margin:0;color:#6b7280;'>No remediation actions were executed.</p>"
     return "<ul style='margin:0; padding-left:18px;'>" + "".join(items) + "</ul>"
 
 
@@ -71,6 +197,7 @@ def _render_steps(steps: List[str]) -> str:
 
     items = []
     for s in steps:
+        # Keep steps readable; they are usually already human-ish.
         items.append(f"<li style='margin:6px 0;'>{_escape_html(s)}</li>")
     return "<ul style='margin:0; padding-left:18px;'>" + "".join(items) + "</ul>"
 
@@ -131,16 +258,17 @@ def build_email(
     attempts: List[Any],
     status: str,
     next_steps: List[str],
-    vuln: Optional[Dict[str, Any]] = None,  # ✅ NEW
+    vuln: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, str]:
     """
     Returns (subject, html_body)
 
-    vuln is optional. If provided, it will render a CWE mapping table.
+    Updated to be demo-friendly:
+    - No raw URLs / status codes / JSON blobs in "Details"
+    - Remediation attempts are human-readable summaries
     """
     incident_type = incident.get("type", "Unknown")
     severity = incident.get("severity", "INFO")
-    details = incident.get("details", "")
 
     # status badge tone
     status_upper = (status or "").upper()
@@ -163,6 +291,17 @@ def build_email(
     subject = f"{subject_prefix} {incident_type} | {host} | {status_upper}"
 
     cwe_block = _render_cwe_table(vuln)
+
+    story = _incident_story(incident, status=status)
+
+    # Human-readable "Details" block (replaces raw logs)
+    details_html = f"""
+    <div style="color:#374151;">
+      <div style="margin:0 0 8px;"><strong>What happened:</strong> {_escape_html(story["what_happened"])}</div>
+      <div style="margin:0 0 8px;"><strong>What the agent did:</strong> {_escape_html(story["what_agent_did"])}</div>
+      <div style="margin:0;"><strong>Outcome:</strong> {_escape_html(story["outcome"])}</div>
+    </div>
+    """
 
     body = f"""
     <div style="font-family:Segoe UI, Arial, sans-serif; color:#111827; line-height:1.45; max-width:760px;">
@@ -187,14 +326,14 @@ def build_email(
         <table style="border-collapse:collapse; width:100%; font-size:13px;">
           {_table_row("Incident Type", f"<strong>{_escape_html(incident_type)}</strong>")}
           {_table_row("Severity", sev_badge)}
-          {_table_row("Details", f"<div style='white-space:pre-wrap; color:#374151;'>{_escape_html(details)}</div>")}
+          {_table_row("Summary", details_html)}
         </table>
 
         <div style="margin-top:16px; padding:14px; border:1px solid #e5e7eb; border-radius:12px; background:#f9fafb;">
           <div style="font-size:13px; font-weight:700; margin-bottom:8px;">
-            Remediation Attempts
+            Remediation Performed
           </div>
-          {_render_attempts(attempts)}
+          {_render_attempts(attempts, status=status)}
         </div>
 
         <div style="margin-top:16px; padding:14px; border:1px solid #e5e7eb; border-radius:12px; background:#f9fafb;">

@@ -6,3 +6,7 @@ backend/runs/
 backend/.kb_cache/
 __pycache__/
 *.pyc
+backend/agent_run.log
+frontend/.venv/
+backend/agent_run.log
+frontend/.venv/
