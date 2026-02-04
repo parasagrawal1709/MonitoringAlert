@@ -569,7 +569,7 @@ def main_app():
         # ===================== ADD-ON: AUTOSYS + DEPLOYMENTS (UI ONLY) =====================
         st.divider()
         st.subheader("🧷 Additional Integrations (UI-only)")
-        integ_tabs = st.tabs(["🔁 AutoSys", "🗑️ Deletions"])
+        integ_tabs = st.tabs(["🔁 AutoSys", "🚀 Deployments", "📦 Preset / Summary", "🗑️ Deletions"])
 
         # ---------------- AutoSys Section ----------------
         with integ_tabs[0]:
@@ -602,188 +602,188 @@ def main_app():
 
             st.caption("Tip: These fields are UI-only until wired into your backend agent/API payload.")
 
-        # # ---------------- Deployments Section (simulated tracker) ----------------
-        # if "deploy_logs" not in st.session_state:
-        #     st.session_state.deploy_logs = []
-        # if "deploy_tags" not in st.session_state:
-        #     st.session_state.deploy_tags = []
-        # if "deploy_version" not in st.session_state:
-        #     st.session_state.deploy_version = ""
-        #
-        # with integ_tabs[1]:
-        #     st.markdown("### 🚀 Deployment Tracking (Additional Fields)")
-        #
-        #     d1, d2, d3 = st.columns(3)
-        #     with d1:
-        #         deploy_enabled = st.checkbox("Enable Deployment Tracking", value=False)
-        #         deploy_tool = st.selectbox(
-        #             "Deployment Tool",
-        #             ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Spinnaker", "Other"],
-        #             index=0,
-        #         )
-        #         deploy_env = st.selectbox("Deployment Environment", ["Dev", "QA", "UAT", "Prod"], index=1)
-        #
-        #     with d2:
-        #         service_name = st.text_input("Service / App Name", value="")
-        #         repo_name = st.text_input("Repo (optional)", value="")
-        #         pipeline_name = st.text_input("Pipeline / Workflow Name (optional)", value="")
-        #
-        #     with d3:
-        #         version = st.text_input("Version / Build / Image Tag", value=st.session_state.deploy_version)
-        #         rollback_strategy = st.selectbox(
-        #             "Rollback Strategy",
-        #             [
-        #                 "None",
-        #                 "Auto Rollback on Failure",
-        #                 "Manual Rollback Only",
-        #                 "Blue/Green Switchback",
-        #                 "Canary Rollback",
-        #             ],
-        #             index=1,
-        #         )
-        #         change_ticket = st.text_input("Change Ticket / CRQ (optional)", value="")
-        #
-        #     with st.expander("Deployment Evidence Collection"):
-        #         collect_deploy_logs = st.checkbox("Collect Deployment Logs", value=True)
-        #         collect_deploy_metrics = st.checkbox("Collect Post-deploy Metrics", value=True)
-        #         collect_deploy_events = st.checkbox("Collect Cluster/Infra Events", value=False)
-        #
-        #     st.caption("Tip: Use this to correlate incidents with deployment activity in your live feed.")
-        #     st.divider()
-        #
-        #     track_deploy = st.button("🚀 Track Deployment", use_container_width=True, disabled=not deploy_enabled)
-        #
-        #     if track_deploy:
-        #         st.session_state.deploy_logs = []
-        #         st.session_state.deploy_tags = []
-        #         if not st.session_state.deploy_version:
-        #             st.session_state.deploy_version = generate_commit_hash()
-        #
-        #         st.session_state.deploy_logs.append(
-        #             f"{utc_now()} | DEPLOY_START | "
-        #             f"service={service_name or 'unknown'} | env={deploy_env} | "
-        #             f"tool={deploy_tool} | commit={st.session_state.deploy_version}"
-        #         )
-        #
-        #         with st.spinner("Deployment in progress..."):
-        #             pytime.sleep(30)
-        #
-        #         st.session_state.deploy_logs.append(
-        #             f"{utc_now()} | DEPLOY_SUCCESS | "
-        #             f"service={service_name or 'unknown'} | commit={st.session_state.deploy_version} | "
-        #             f"rollback={rollback_strategy}"
-        #         )
-        #
-        #         st.session_state.deploy_tags = generate_random_tags()
-        #
-        #     if st.session_state.deploy_logs:
-        #         st.markdown("### 📡 Deployment Activity Feed")
-        #         for log in st.session_state.deploy_logs:
-        #             st.code(log, language="text")
-        #
-        #     if st.session_state.deploy_tags:
-        #         st.markdown("### 🏷 Auto-generated Deployment Tags")
-        #         st.multiselect(
-        #             "Tags",
-        #             options=st.session_state.deploy_tags,
-        #             default=st.session_state.deploy_tags,
-        #             disabled=True,
-        #         )
+        # ---------------- Deployments Section (simulated tracker) ----------------
+        if "deploy_logs" not in st.session_state:
+            st.session_state.deploy_logs = []
+        if "deploy_tags" not in st.session_state:
+            st.session_state.deploy_tags = []
+        if "deploy_version" not in st.session_state:
+            st.session_state.deploy_version = ""
+
+        with integ_tabs[1]:
+            st.markdown("### 🚀 Deployment Tracking (Additional Fields)")
+
+            d1, d2, d3 = st.columns(3)
+            with d1:
+                deploy_enabled = st.checkbox("Enable Deployment Tracking", value=False)
+                deploy_tool = st.selectbox(
+                    "Deployment Tool",
+                    ["Azure DevOps", "Jenkins", "Argo CD", "GitHub Actions", "GitLab CI", "Spinnaker", "Other"],
+                    index=0,
+                )
+                deploy_env = st.selectbox("Deployment Environment", ["Dev", "QA", "UAT", "Prod"], index=1)
+
+            with d2:
+                service_name = st.text_input("Service / App Name", value="")
+                repo_name = st.text_input("Repo (optional)", value="")
+                pipeline_name = st.text_input("Pipeline / Workflow Name (optional)", value="")
+
+            with d3:
+                version = st.text_input("Version / Build / Image Tag", value=st.session_state.deploy_version)
+                rollback_strategy = st.selectbox(
+                    "Rollback Strategy",
+                    [
+                        "None",
+                        "Auto Rollback on Failure",
+                        "Manual Rollback Only",
+                        "Blue/Green Switchback",
+                        "Canary Rollback",
+                    ],
+                    index=1,
+                )
+                change_ticket = st.text_input("Change Ticket / CRQ (optional)", value="")
+
+            with st.expander("Deployment Evidence Collection"):
+                collect_deploy_logs = st.checkbox("Collect Deployment Logs", value=True)
+                collect_deploy_metrics = st.checkbox("Collect Post-deploy Metrics", value=True)
+                collect_deploy_events = st.checkbox("Collect Cluster/Infra Events", value=False)
+
+            st.caption("Tip: Use this to correlate incidents with deployment activity in your live feed.")
+            st.divider()
+
+            track_deploy = st.button("🚀 Track Deployment", use_container_width=True, disabled=not deploy_enabled)
+
+            if track_deploy:
+                st.session_state.deploy_logs = []
+                st.session_state.deploy_tags = []
+                if not st.session_state.deploy_version:
+                    st.session_state.deploy_version = generate_commit_hash()
+
+                st.session_state.deploy_logs.append(
+                    f"{utc_now()} | DEPLOY_START | "
+                    f"service={service_name or 'unknown'} | env={deploy_env} | "
+                    f"tool={deploy_tool} | commit={st.session_state.deploy_version}"
+                )
+
+                with st.spinner("Deployment in progress..."):
+                    pytime.sleep(30)
+
+                st.session_state.deploy_logs.append(
+                    f"{utc_now()} | DEPLOY_SUCCESS | "
+                    f"service={service_name or 'unknown'} | commit={st.session_state.deploy_version} | "
+                    f"rollback={rollback_strategy}"
+                )
+
+                st.session_state.deploy_tags = generate_random_tags()
+
+            if st.session_state.deploy_logs:
+                st.markdown("### 📡 Deployment Activity Feed")
+                for log in st.session_state.deploy_logs:
+                    st.code(log, language="text")
+
+            if st.session_state.deploy_tags:
+                st.markdown("### 🏷 Auto-generated Deployment Tags")
+                st.multiselect(
+                    "Tags",
+                    options=st.session_state.deploy_tags,
+                    default=st.session_state.deploy_tags,
+                    disabled=True,
+                )
 
         # ---------------- Summary + Preset Download/Upload ----------------
-        # with integ_tabs[2]:
-        #     st.markdown("### 📦 Configuration Summary & Presets")
-        #     s1, s2, s3 = st.columns(3)
-        #
-        #     with s1:
-        #         st.markdown("**Agent Core**")
-        #         st.write({"env": env, "monitors": monitors, "keywords": keywords})
-        #
-        #     with s2:
-        #         st.markdown("**AutoSys**")
-        #         st.write(
-        #             {
-        #                 "enabled": autosys_enabled,
-        #                 "host": autosys_host,
-        #                 "instance": autosys_instance,
-        #                 "job_filter": autosys_job_filter,
-        #                 "box_filter": autosys_box_filter,
-        #                 "lookback_hours": autosys_lookback_hrs,
-        #                 "status_filter": autosys_status,
-        #                 "collect_output": autosys_collect_output,
-        #                 "collect_alarm": autosys_collect_alarm,
-        #             }
-        #         )
-        #
-        #     with s3:
-        #         st.markdown("**Deployments**")
-        #         st.write(
-        #             {
-        #                 "enabled": deploy_enabled,
-        #                 "tool": deploy_tool,
-        #                 "environment": deploy_env,
-        #                 "service": service_name,
-        #                 "repo": repo_name,
-        #                 "pipeline": pipeline_name,
-        #                 "version": version,
-        #                 "rollback_strategy": rollback_strategy,
-        #                 "change_ticket": change_ticket,
-        #                 "collect_logs": collect_deploy_logs,
-        #                 "collect_metrics": collect_deploy_metrics,
-        #                 "collect_events": collect_deploy_events,
-        #             }
-        #         )
-        #
-        #     preset_name = st.text_input("Preset Name", value="default")
-        #     preset_payload = {
-        #         "agent": {
-        #             "env": env,
-        #             "monitors": monitors,
-        #             "keywords": keywords,
-        #             "cpu_threshold": cpu_threshold,
-        #             "duration": duration,
-        #             "remediation": remediation,
-        #         },
-        #         "autosys": {
-        #             "enabled": autosys_enabled,
-        #             "host": autosys_host,
-        #             "instance": autosys_instance,
-        #             "job_filter": autosys_job_filter,
-        #             "box_filter": autosys_box_filter,
-        #             "lookback_hours": autosys_lookback_hrs,
-        #             "status_filter": autosys_status,
-        #             "collect_output": autosys_collect_output,
-        #             "collect_alarm": autosys_collect_alarm,
-        #         },
-        #         "deployments": {
-        #             "enabled": deploy_enabled,
-        #             "tool": deploy_tool,
-        #             "environment": deploy_env,
-        #             "service": service_name,
-        #             "repo": repo_name,
-        #             "pipeline": pipeline_name,
-        #             "version": version,
-        #             "rollback_strategy": rollback_strategy,
-        #             "change_ticket": change_ticket,
-        #             "collect_logs": collect_deploy_logs,
-        #             "collect_metrics": collect_deploy_metrics,
-        #             "collect_events": collect_deploy_events,
-        #         },
-        #         "meta": {"saved_at": datetime.utcnow().isoformat() + "Z"},
-        #     }
-        #
-        #     p1, p2 = st.columns(2)
-        #     with p1:
-        #         st.download_button(
-        #             "⬇️ Download Preset JSON",
-        #             data=json.dumps(preset_payload, indent=2),
-        #             file_name=f"{preset_name}.json",
-        #             mime="application/json",
-        #         )
-        #     with p2:
-        #         uploaded = st.file_uploader("⬆️ Upload Preset JSON", type=["json"])
-        #         if uploaded:
-        #             st.info("Preset uploaded (UI-only). You can parse & apply values later if needed.")
+        with integ_tabs[2]:
+            st.markdown("### 📦 Configuration Summary & Presets")
+            s1, s2, s3 = st.columns(3)
+
+            with s1:
+                st.markdown("**Agent Core**")
+                st.write({"env": env, "monitors": monitors, "keywords": keywords})
+
+            with s2:
+                st.markdown("**AutoSys**")
+                st.write(
+                    {
+                        "enabled": autosys_enabled,
+                        "host": autosys_host,
+                        "instance": autosys_instance,
+                        "job_filter": autosys_job_filter,
+                        "box_filter": autosys_box_filter,
+                        "lookback_hours": autosys_lookback_hrs,
+                        "status_filter": autosys_status,
+                        "collect_output": autosys_collect_output,
+                        "collect_alarm": autosys_collect_alarm,
+                    }
+                )
+
+            with s3:
+                st.markdown("**Deployments**")
+                st.write(
+                    {
+                        "enabled": deploy_enabled,
+                        "tool": deploy_tool,
+                        "environment": deploy_env,
+                        "service": service_name,
+                        "repo": repo_name,
+                        "pipeline": pipeline_name,
+                        "version": version,
+                        "rollback_strategy": rollback_strategy,
+                        "change_ticket": change_ticket,
+                        "collect_logs": collect_deploy_logs,
+                        "collect_metrics": collect_deploy_metrics,
+                        "collect_events": collect_deploy_events,
+                    }
+                )
+
+            preset_name = st.text_input("Preset Name", value="default")
+            preset_payload = {
+                "agent": {
+                    "env": env,
+                    "monitors": monitors,
+                    "keywords": keywords,
+                    "cpu_threshold": cpu_threshold,
+                    "duration": duration,
+                    "remediation": remediation,
+                },
+                "autosys": {
+                    "enabled": autosys_enabled,
+                    "host": autosys_host,
+                    "instance": autosys_instance,
+                    "job_filter": autosys_job_filter,
+                    "box_filter": autosys_box_filter,
+                    "lookback_hours": autosys_lookback_hrs,
+                    "status_filter": autosys_status,
+                    "collect_output": autosys_collect_output,
+                    "collect_alarm": autosys_collect_alarm,
+                },
+                "deployments": {
+                    "enabled": deploy_enabled,
+                    "tool": deploy_tool,
+                    "environment": deploy_env,
+                    "service": service_name,
+                    "repo": repo_name,
+                    "pipeline": pipeline_name,
+                    "version": version,
+                    "rollback_strategy": rollback_strategy,
+                    "change_ticket": change_ticket,
+                    "collect_logs": collect_deploy_logs,
+                    "collect_metrics": collect_deploy_metrics,
+                    "collect_events": collect_deploy_events,
+                },
+                "meta": {"saved_at": datetime.utcnow().isoformat() + "Z"},
+            }
+
+            p1, p2 = st.columns(2)
+            with p1:
+                st.download_button(
+                    "⬇️ Download Preset JSON",
+                    data=json.dumps(preset_payload, indent=2),
+                    file_name=f"{preset_name}.json",
+                    mime="application/json",
+                )
+            with p2:
+                uploaded = st.file_uploader("⬆️ Upload Preset JSON", type=["json"])
+                if uploaded:
+                    st.info("Preset uploaded (UI-only). You can parse & apply values later if needed.")
 
         # ---------------- Deletions: Intelligent + Legacy UI-only ----------------
         with integ_tabs[3]:
